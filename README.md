@@ -22,7 +22,7 @@ Start Redis (queue broker)
 💡 In another terminal window:
 Navigate to your frontend folder:
 
-'cd ~/infinite-quant-frontend'  # or wherever your frontend lives
+'cd ~/infinite-quant/frontend'  # or wherever your frontend lives
 
 Install dependencies:
 'npm install'
