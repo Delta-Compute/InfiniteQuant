@@ -11,16 +11,11 @@ import time
 import bittensor as bt
 import subprocess
 
-from miner_config import MinerConfig
-from vali_objects.decoders.generalized_json_decoder import GeneralizedJSONDecoder
-from vali_objects.utils.vali_bkp_utils import ValiBkpUtils
-
-
 class Miner:
     def __init__(self):
         self.config = self.get_config()
-        assert self.config.netuid in (89), "InfiniteQuant runs on netuid 89 (mainnet) and - (testnet)"
-        self.is_testnet = self.config.netuid == 89
+        assert self.config.netuid in (89, 351), "InfiniteQuant runs on netuid 89 (mainnet) and - (testnet)"
+        self.is_testnet = self.config.netuid == 351
         self.setup_logging_directory()
         self.initialize_bittensor_objects()
         #self.check_miner_registration()
