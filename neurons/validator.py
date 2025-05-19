@@ -106,7 +106,7 @@ class Validator:
         self.config = self.get_config()
         # Use the getattr function to safely get the autosync attribute with a default of False if not found.
         self.auto_sync = getattr(self.config, 'autosync', False) and 'mothership' not in ValiUtils.get_secrets()
-        self.is_mainnet = self.config.netuid == 8
+        self.is_mainnet = self.config.netuid == 89
         # Ensure the directory for logging exists, else create one.
         if not os.path.exists(self.config.full_path):
             os.makedirs(self.config.full_path, exist_ok=True)
