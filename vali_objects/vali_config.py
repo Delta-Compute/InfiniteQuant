@@ -133,7 +133,8 @@ class ValiConfig:
     DRAWDOWN_MINVALUE_PERCENTAGE = 0.5
 
     # Challenge period
-    CHALLENGE_PERIOD_WEIGHT = 1.2e-05  # essentially nothing
+    CHALLENGE_PERIOD_MIN_WEIGHT = 1.2e-05  # essentially nothing
+    CHALLENGE_PERIOD_MAX_WEIGHT = 2.4e-05
     CHALLENGE_PERIOD_MS = 90 * 24 * 60 * 60 * 1000  # 90 days
     CHALLENGE_PERIOD_PERCENTILE_THRESHOLD = 0.75 # miners must pass 75th percentile to enter the main competition
 
@@ -146,7 +147,7 @@ class ValiConfig:
 
     METAGRAPH_UPDATE_REFRESH_TIME_MS = 60 * 1000  # 1 minute
     ELIMINATION_CHECK_INTERVAL_MS = 60 * 5 * 1000  # 5 minutes
-    ELIMINATION_FILE_DELETION_DELAY_MS = 60 * 30 * 1000  # 30 min
+    ELIMINATION_FILE_DELETION_DELAY_MS = 2 * 24 * 60 * 60 * 1000  # 2 days
 
     # Distributional statistics
     SOFTMAX_TEMPERATURE = 0.125
@@ -189,6 +190,8 @@ class TradePair(Enum):
     # forex
     AUDCAD = ["AUDCAD", "AUD/CAD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
+    AUDCHF = ["AUDCHF", "AUD/CHF", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
+              TradePairCategory.FOREX]
     AUDUSD = ["AUDUSD", "AUD/USD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
     AUDJPY = ["AUDJPY", "AUD/JPY", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
@@ -200,6 +203,8 @@ class TradePair(Enum):
     CADJPY = ["CADJPY", "CAD/JPY", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
     CHFJPY = ["CHFJPY", "CHF/JPY", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
+              TradePairCategory.FOREX]
+    EURAUD = ["EURAUD", "EUR/AUD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
     EURCAD = ["EURCAD", "EUR/CAD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
@@ -215,6 +220,8 @@ class TradePair(Enum):
               TradePairCategory.FOREX]
     NZDCAD = ["NZDCAD", "NZD/CAD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
+    NZDCHF = ["NZDCHF", "NZD/CHF", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
+              TradePairCategory.FOREX]
     NZDJPY = ["NZDJPY", "NZD/JPY", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
     NZDUSD = ["NZDUSD", "NZD/USD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
@@ -223,7 +230,11 @@ class TradePair(Enum):
                 TradePairCategory.FOREX]
     GBPCAD = ["GBPCAD", "GBP/CAD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
                 TradePairCategory.FOREX]
+    GBPCHF = ["GBPCHF", "GBP/CHF", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
+              TradePairCategory.FOREX]
     GBPJPY = ["GBPJPY", "GBP/JPY", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
+              TradePairCategory.FOREX]
+    GBPNZD = ["GBPNZD", "GBP/NZD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
     GBPUSD = ["GBPUSD", "GBP/USD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
@@ -236,11 +247,11 @@ class TradePair(Enum):
     USDMXN = ["USDMXN", "USD/MXN", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE,
               TradePairCategory.FOREX]
 
-    # "Commodities" (Bundle with Forex for now)
+    # "Commodities" (Bundle with Forex for now) (temporariliy paused for trading)
     XAUUSD = ["XAUUSD", "XAU/USD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE, TradePairCategory.FOREX]
     XAGUSD = ["XAGUSD", "XAG/USD", 0.00007, ValiConfig.FOREX_MIN_LEVERAGE, ValiConfig.FOREX_MAX_LEVERAGE, TradePairCategory.FOREX]
 
-    # Equities
+    # Equities (temporarily paused for trading)
     NVDA = ["NVDA", "NVDA", 0.00009, ValiConfig.EQUITIES_MIN_LEVERAGE, ValiConfig.EQUITIES_MAX_LEVERAGE, TradePairCategory.EQUITIES]
     AAPL = ["AAPL", "AAPL", 0.00009, ValiConfig.EQUITIES_MIN_LEVERAGE, ValiConfig.EQUITIES_MAX_LEVERAGE, TradePairCategory.EQUITIES]
     TSLA = ["TSLA", "TSLA", 0.00009, ValiConfig.EQUITIES_MIN_LEVERAGE, ValiConfig.EQUITIES_MAX_LEVERAGE, TradePairCategory.EQUITIES]

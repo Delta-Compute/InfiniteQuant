@@ -15,7 +15,7 @@ from time_util.time_util import MS_IN_8_HOURS, MS_IN_24_HOURS, timeme
 
 from shared_objects.cache_controller import CacheController
 from time_util.time_util import TimeUtil, UnifiedMarketCalendar
-from vali_objects.utils.elimination_manager import EliminationManager
+from vali_objects.utils.elimination_manager import EliminationManager, EliminationReason
 from vali_objects.utils.position_manager import PositionManager
 from vali_objects.vali_config import ValiConfig
 from vali_objects.position import Position
@@ -368,13 +368,13 @@ class PerfLedgerManager(CacheController):
         self.running_unit_tests = running_unit_tests
         self.enable_rss = enable_rss
         self.parallel_mode = parallel_mode
-        bt.logging.info(f"Running performance ledger updates in parallel with {self.parallel_mode.name}")
+        bt.logging.info(f"Running performance ledger manager with parallel_mode {self.parallel_mode.name}")
 
         self.build_portfolio_ledgers_only = build_portfolio_ledgers_only
-        if perf_ledger_hks_to_invalidate:
-            self.perf_ledger_hks_to_invalidate = perf_ledger_hks_to_invalidate
-        else:
+        if perf_ledger_hks_to_invalidate is None:
             self.perf_ledger_hks_to_invalidate = {}
+        else:
+            self.perf_ledger_hks_to_invalidate = perf_ledger_hks_to_invalidate
 
         if ipc_manager:
             self.pl_elimination_rows = ipc_manager.list()
@@ -512,6 +512,10 @@ class PerfLedgerManager(CacheController):
             if hotkey not in hotkeys:
                 continue
 
+            if hotkey in self.perf_ledger_hks_to_invalidate:
+                bt.logging.warning(f"Skipping hotkey {hotkey} in filtered_ledger_for_scoring due to invalidation.")
+                continue
+
             if miner_portfolio_ledger is None:
                 continue
 
@@ -530,6 +534,22 @@ class PerfLedgerManager(CacheController):
             ValiBkpUtils.write_file(file_path, {})
         for k in list(self.hotkey_to_perf_bundle.keys()):
             del self.hotkey_to_perf_bundle[k]
+
+
+    @staticmethod
+    def clear_perf_ledgers_from_disk_autosync(hotkeys:list):
+        file_path = ValiBkpUtils.get_perf_ledgers_path()
+        filtered_data = {}
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                existing_data = json.load(file)
+
+            for hk, bundles in existing_data.items():
+                if hk in hotkeys:
+                    filtered_data[hk] = bundles
+
+        ValiBkpUtils.write_file(file_path, filtered_data)
+
 
     def run_update_loop(self):
         setproctitle(f"vali_{self.__class__.__name__}")
@@ -600,7 +620,13 @@ class PerfLedgerManager(CacheController):
             tp_to_carry_fee[k] = 1.0
 
         n_open_positions = 0
-        now_ms = TimeUtil.now_in_millis()
+
+        # Set now_ms to end_time_ms when backtesting for historical perf ledger generation
+        if self.is_backtesting:
+            now_ms = end_time_ms
+        else:
+            now_ms = TimeUtil.now_in_millis()
+
         ledger_cutoff_ms = now_ms - perf_ledger_bundle[TP_ID_PORTFOLIO].target_ledger_window_ms
 
         n_positions = 0
@@ -848,7 +874,7 @@ class PerfLedgerManager(CacheController):
     def check_liquidated(self, miner_hotkey, portfolio_return, t_ms, tp_to_historical_positions):
         if portfolio_return == 0:
             bt.logging.warning(f"Portfolio value is {portfolio_return} for miner {miner_hotkey} at {t_ms}. Eliminating miner.")
-            elimination_row = self.generate_elimination_row(miner_hotkey, 0.0, 'LIQUIDATED', t_ms=t_ms, price_info=self.tp_to_last_price, return_info={'dd_stats': {}, 'returns': self.trade_pair_to_position_ret})
+            elimination_row = self.generate_elimination_row(miner_hotkey, 0.0, EliminationReason.LIQUIDATED.value, t_ms=t_ms, price_info=self.tp_to_last_price, return_info={'dd_stats': {}, 'returns': self.trade_pair_to_position_ret})
             self.candidate_pl_elimination_rows.append(elimination_row)
             self.candidate_pl_elimination_rows[-1] = elimination_row  # Trigger the update on the multiprocessing Manager
             #self.hk_to_dd_stats[miner_hotkey]['eliminated'] = True
@@ -1395,14 +1421,15 @@ class PerfLedgerManager(CacheController):
             self.random_security_screenings = set()
 
         # Regenerate checkpoints if a hotkey was modified during position sync
-        attempting_invalidations = bool(self.perf_ledger_hks_to_invalidate)
-        if attempting_invalidations:
+        self.hks_attempting_invalidations = list(self.perf_ledger_hks_to_invalidate.keys())
+        if self.hks_attempting_invalidations:
             for hk, t in self.perf_ledger_hks_to_invalidate.items():
                 hotkeys_to_delete.add(hk)
-                bt.logging.info(f"perf ledger invalidated for hk {hk} due to position sync at time {t}")
+                bt.logging.info(f"perf ledger marked for full rebuild for hk {hk} due to position sync at time {t}")
 
         for k in hotkeys_to_delete:
-            del perf_ledger_bundles[k]
+            if k in perf_ledger_bundles:
+                del perf_ledger_bundles[k]
 
         self.hk_to_last_order_processed_ms = {k: v for k, v in self.hk_to_last_order_processed_ms.items() if k in perf_ledger_bundles}
 
@@ -1425,9 +1452,11 @@ class PerfLedgerManager(CacheController):
         # Time in the past to start updating the perf ledgers
         self.update_all_perf_ledgers(hotkey_to_positions, perf_ledger_bundles, t_ms)
 
-        # Clear invalidations after successful update. Prevent race condition by only clearing if we attempted invalidations.
-        if attempting_invalidations:
-            self.perf_ledger_hks_to_invalidate.clear()
+        # Clear invalidations after successful update. Prevent race condition by only clearing if we attempted invalidation for specific hk
+        if self.hks_attempting_invalidations:
+            for x in self.hks_attempting_invalidations:
+                if x in self.perf_ledger_hks_to_invalidate:
+                    del self.perf_ledger_hks_to_invalidate[x]
 
         if testing_one_hotkey:
             portfolio_ledger = perf_ledger_bundles[testing_one_hotkey][TP_ID_PORTFOLIO]
@@ -1493,6 +1522,13 @@ class PerfLedgerManager(CacheController):
 
     @timeme
     def save_perf_ledgers(self, perf_ledgers_copy: dict[str, dict[str, PerfLedger]] | dict[str, dict[str, dict]], raw_json=False):
+        # We may have items in perf_ledger_hks_to_invalidate added after the iteration began.
+        # Let's nuke them to allow freed hotkeys to escape elimination.
+        for hk, t in self.perf_ledger_hks_to_invalidate.items():
+            if hk not in self.hks_attempting_invalidations:
+                bt.logging.warning(f"perf ledger invalidated for hk {hk} during update dat {self.perf_ledger_hks_to_invalidate[hk]}. Removing from perf ledgers.")
+                del perf_ledgers_copy[hk]
+
         if not self.is_backtesting:
             self.save_perf_ledgers_to_disk(perf_ledgers_copy, raw_json=raw_json)
 
@@ -1538,7 +1574,7 @@ class PerfLedgerManager(CacheController):
 
     def update_one_perf_ledger_parallel(self, data_tuple):
         t0 = time.time()
-        hotkey_i, n_hotkeys, hotkey, positions, existing_bundle, now_ms = data_tuple
+        hotkey_i, n_hotkeys, hotkey, positions, existing_bundle, now_ms, is_backtesting = data_tuple
         from tests.shared_objects.mock_classes import MockMetagraph
         # Create a temporary manager for processing
         # This is to avoid sharing state between executors
@@ -1547,7 +1583,8 @@ class PerfLedgerManager(CacheController):
             parallel_mode=self.parallel_mode,
             secrets=self.secrets,
             build_portfolio_ledgers_only=self.build_portfolio_ledgers_only,
-            target_ledger_window_ms=self.target_ledger_window_ms
+            target_ledger_window_ms=self.target_ledger_window_ms,
+            is_backtesting=is_backtesting
         )
         last_update_time_ms = existing_bundle[TP_ID_PORTFOLIO].last_update_ms if existing_bundle else 0
         worker_plm.now_ms = now_ms
@@ -1565,7 +1602,8 @@ class PerfLedgerManager(CacheController):
     def update_perf_ledgers_parallel(self, spark, pool, hotkey_to_positions: dict[str, List[Position]],
                                      existing_perf_ledgers: dict[str, dict[str, PerfLedger]],
                                      parallel_mode = ParallelizationMode.PYSPARK,
-                                     now_ms: int = None, top_n_miners: int=None) -> dict[str, dict[str, PerfLedger]]:
+                                     now_ms: int = None, top_n_miners: int=None,
+                                     is_backtesting: bool = False) -> dict[str, dict[str, PerfLedger]]:
         """
         Update all perf ledgers in parallel using PySpark.
 
@@ -1589,7 +1627,7 @@ class PerfLedgerManager(CacheController):
         # Create a list of hotkeys with their positions for RDD
         hotkey_data = []
         for i, (hotkey, positions) in enumerate(hotkey_to_positions.items()):
-            hotkey_data.append((i, len(hotkey_to_positions), hotkey, positions, existing_perf_ledgers.get(hotkey), now_ms))
+            hotkey_data.append((i, len(hotkey_to_positions), hotkey, positions, existing_perf_ledgers.get(hotkey), now_ms, is_backtesting))
             if top_n_miners and i == top_n_miners - 1:
                 break
 

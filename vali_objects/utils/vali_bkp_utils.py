@@ -46,6 +46,14 @@ class ValiBkpUtils:
         return ValiConfig.BASE_DIR + "/data/validator_checkpoint.json" if use_data_dir else \
                 ValiConfig.BASE_DIR + "/validator_checkpoint.json"
 
+    @staticmethod
+    def get_api_keys_file_path():
+        return ValiConfig.BASE_DIR + "/ptn_api/api_keys.json"
+
+    @staticmethod
+    def get_sequence_number_file_path():
+        return ValiConfig.BASE_DIR + "/ptn_api/sequence_number.json"
+
 
     @staticmethod
     def get_positions_override_dir(running_unit_tests=False) -> str:
@@ -142,6 +150,10 @@ class ValiBkpUtils:
         if suffix_dir is not None:
             ans += '.gz'
         return ans
+
+    @staticmethod
+    def get_meta_json_path() -> str:
+        return ValiConfig.BASE_DIR + '/meta/meta.json'
 
     @staticmethod
     def get_vali_weights_dir() -> str:
